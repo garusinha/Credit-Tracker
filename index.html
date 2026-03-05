@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gamirasa Food - Active Credit</title>
+    <title>Gamirasa Food - Pro Credit Tracker</title>
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2830/2830305.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -12,61 +12,67 @@
         .hidden-section { display: none !important; }
         .active-tab { border-bottom: 4px solid #1d4ed8; color: #1d4ed8; }
         .overdue-text { color: #dc2626; font-weight: 900; }
-        .settled-row { background-color: #f0fdf4 !important; color: #166534; opacity: 0.7; }
+        .overdue-bg { background-color: #fef2f2 !important; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-900">
 
-    <div id="login-screen" class="fixed inset-0 bg-blue-900 flex items-center justify-center z-50 p-6">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
-            <img src="https://cdn-icons-png.flaticon.com/512/2830/2830305.png" class="w-16 h-16 mx-auto mb-4" alt="Logo">
-            <h1 class="text-2xl font-black text-blue-900 mb-6 uppercase">Gamirasa Food</h1>
+    <div id="login-screen" class="fixed inset-0 bg-blue-900 flex items-center justify-center z-50 p-6 text-center">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm">
+            <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <img src="https://cdn-icons-png.flaticon.com/512/2830/2830305.png" class="w-12 h-12" alt="Logo">
+            </div>
+            <h1 class="text-2xl font-black text-blue-900 uppercase tracking-tighter">Gamirasa Food</h1>
+            <p class="text-[10px] text-slate-400 font-bold mb-6 tracking-widest uppercase">Rep Credit System</p>
             <input type="password" id="pin-input" placeholder="PIN (2705)" class="w-full text-center text-3xl p-4 border-b-4 border-slate-100 outline-none mb-6">
-            <button onclick="checkPin()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg">UNLOCK</button>
+            <button onclick="checkPin()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95 transition">SIGN IN</button>
         </div>
     </div>
 
     <div id="main-app" class="hidden-section max-w-4xl mx-auto">
         <div class="flex bg-white shadow-sm sticky top-0 z-30">
-            <button id="tab-entry-btn" onclick="showTab('entry')" class="flex-1 py-4 font-bold active-tab text-xs uppercase">Pending Collections</button>
-            <button id="tab-summary-btn" onclick="showTab('summary')" class="flex-1 py-4 font-bold text-slate-400 text-xs uppercase">Final Report</button>
+            <button id="tab-entry-btn" onclick="showTab('entry')" class="flex-1 py-4 font-bold active-tab text-xs uppercase">Collection List</button>
+            <button id="tab-summary-btn" onclick="showTab('summary')" class="flex-1 py-4 font-bold text-slate-400 text-xs uppercase">Due Report</button>
         </div>
 
         <div id="tab-entry" class="p-4 space-y-4">
             <div class="relative">
-                <input type="text" id="search-input" onkeyup="filterBills()" placeholder="Search active shops..." 
-                       class="w-full p-4 pl-12 bg-white rounded-2xl border shadow-sm outline-none focus:border-blue-600">
+                <input type="text" id="search-input" onkeyup="filterBills()" placeholder="Search Name or Bill No..." 
+                       class="w-full p-4 pl-12 bg-white rounded-2xl border shadow-sm outline-none focus:border-blue-600 transition-all">
                 <span class="absolute left-4 top-4 text-slate-400">🔍</span>
             </div>
 
-            <div class="bg-white p-6 rounded-3xl border">
-                <h3 class="font-bold mb-4 text-[10px] uppercase text-slate-400">Add New Credit</h3>
+            <div class="bg-white p-6 rounded-3xl border border-slate-200">
+                <h3 class="font-bold mb-4 text-[10px] uppercase text-slate-400">Register Credit</h3>
                 <div class="grid gap-3">
                     <div class="grid grid-cols-2 gap-3">
                         <input id="bill-no" type="text" placeholder="Bill No" class="p-4 bg-slate-50 rounded-xl border outline-none text-sm">
                         <input id="phone" type="tel" placeholder="Phone" class="p-4 bg-slate-50 rounded-xl border outline-none text-sm">
                     </div>
                     <input id="shop-name" type="text" placeholder="Shop Name" class="p-4 bg-slate-50 rounded-xl border outline-none text-sm">
-                    <input id="amount" type="number" placeholder="Total Amount (Rs.)" class="p-4 bg-slate-100 rounded-xl font-bold text-blue-700 border outline-none text-lg">
-                    <input id="credit-date" type="date" class="p-4 bg-blue-50 rounded-xl border border-blue-100 font-bold outline-none">
-                    <button onclick="addBill()" class="bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg">SAVE CREDIT</button>
+                    <input id="amount" type="number" placeholder="Amount (Rs.)" class="p-4 bg-slate-100 rounded-xl font-bold text-blue-700 outline-none border text-lg">
+                    <input id="credit-date" type="date" class="p-4 bg-blue-50 rounded-xl border border-blue-100 font-bold outline-none text-blue-900">
+                    <button onclick="addBill()" class="bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg">SAVE RECORD</button>
                 </div>
             </div>
 
-            <div id="bill-list" class="space-y-3"></div>
+            <div id="bill-list" class="space-y-3 pb-10"></div>
         </div>
 
         <div id="tab-summary" class="p-4 hidden-section">
             <div class="bg-white rounded-3xl shadow-sm border overflow-hidden">
                 <div class="p-6 flex justify-between items-center bg-slate-50 border-b">
-                    <h3 class="font-bold text-sm text-blue-900">Today's Complete Record</h3>
-                    <button onclick="downloadPDF()" class="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-bold">PDF REPORT</button>
+                    <div>
+                        <h3 class="font-bold text-sm">Outstanding Credits Only</h3>
+                        <p class="text-[9px] text-slate-400">Settled bills are excluded from this report</p>
+                    </div>
+                    <button onclick="downloadPDF()" class="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md">PDF</button>
                 </div>
                 <div class="overflow-x-auto">
                     <table id="report-table" class="w-full text-left text-[11px]">
-                        <thead class="bg-slate-100 text-slate-500 uppercase font-bold">
+                        <thead class="bg-slate-100 text-slate-500 uppercase font-black">
                             <tr>
-                                <th class="p-4">Bill</th><th class="p-4">Shop</th><th class="p-4">Date</th><th class="p-4">Days</th><th class="p-4 text-right">Balance</th>
+                                <th class="p-4">Bill No</th><th class="p-4">Shop</th><th class="p-4">Date</th><th class="p-4 text-center">Days</th><th class="p-4 text-right">Balance</th>
                             </tr>
                         </thead>
                         <tbody id="summary-table-body" class="divide-y"></tbody>
@@ -79,15 +85,18 @@
     <div id="shop-modal" class="fixed inset-0 bg-slate-900/90 hidden-section flex items-center justify-center p-4 z-[60]">
         <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl relative">
             <button onclick="closeShopModal()" class="absolute top-4 right-4 text-slate-400 text-2xl">✕</button>
-            <h2 id="modal-shop-title" class="text-xl font-black text-blue-900 uppercase"></h2>
-            <div class="my-4 p-4 bg-slate-50 rounded-2xl text-xs">
+            <h2 id="modal-shop-title" class="text-xl font-black text-blue-900 uppercase mb-4 pr-10"></h2>
+            <div class="bg-blue-50 p-4 rounded-2xl mb-4 text-xs space-y-1">
                 <div class="flex justify-between"><span>Credit Age:</span> <b id="modal-days-count" class="text-blue-600"></b></div>
                 <div class="flex justify-between text-blue-800 text-lg font-black border-t pt-2 mt-2"><span>Current Balance:</span> <span id="modal-balance"></span></div>
             </div>
-            <div id="history-list" class="mb-4 space-y-1 text-[10px] max-h-32 overflow-y-auto border-t pt-2"></div>
+            <div class="mb-4">
+                <p class="text-[9px] font-bold text-slate-400 uppercase mb-2">Payment History</p>
+                <div id="history-list" class="space-y-1 text-[10px] max-h-32 overflow-y-auto border-t pt-2"></div>
+            </div>
             <div id="settle-controls">
-                <input id="settle-amount" type="number" placeholder="Enter Payment Rs." class="w-full p-4 bg-slate-100 rounded-xl mb-4 text-center font-bold border outline-none">
-                <button onclick="confirmSettlement()" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold">SETTLE</button>
+                <input id="settle-amount" type="number" placeholder="Enter Amount" class="w-full p-4 bg-slate-100 rounded-xl mb-4 text-center font-bold border outline-none">
+                <button onclick="confirmSettlement()" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold">SETTLE NOW</button>
             </div>
         </div>
     </div>
@@ -116,7 +125,7 @@
                 document.getElementById('login-screen').classList.add('hidden-section');
                 document.getElementById('main-app').classList.remove('hidden-section');
                 loadData();
-            } else alert("Invalid PIN");
+            } else alert("Access Denied");
         };
 
         window.showTab = (tab) => {
@@ -133,7 +142,7 @@
 
         window.filterBills = () => {
             const term = document.getElementById('search-input').value.toLowerCase();
-            // Search still lets you find settled shops, but main list hides them
+            // Search shows BOTH settled and active shops
             renderList(allData.filter(b => (b.shopName.toLowerCase().includes(term) || b.billNo.includes(term))));
         };
 
@@ -143,7 +152,7 @@
             const p = document.getElementById('phone').value;
             const a = parseFloat(document.getElementById('amount').value);
             const d = document.getElementById('credit-date').value;
-            if(!b || !s || isNaN(a)) return alert("Check entry");
+            if(!b || !s || isNaN(a)) return alert("Error in fields");
 
             await addDoc(collection(db, "bills"), {
                 billNo: b, shopName: s, phone: p, amount: a, balance: a,
@@ -158,11 +167,11 @@
                 allData = [];
                 snap.forEach(doc => allData.push({ id: doc.id, ...doc.data() }));
                 
-                // MAIN LIST LOGIC: Hide if balance is 0
+                // MAIN LIST: Only show active balance > 0
                 renderList(allData.filter(b => b.balance > 0));
                 
-                // SUMMARY LOGIC: Show everything
-                renderTable(allData);
+                // SUMMARY TAB: ONLY UNPAID (Clean report)
+                renderTable(allData.filter(b => b.balance > 0));
             });
         }
 
@@ -170,25 +179,25 @@
             let html = '';
             data.forEach(d => {
                 const days = calculateDays(d.date);
+                const settled = d.balance <= 0;
                 html += `
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border-l-8 ${days >= 14 ? 'border-red-600' : 'border-blue-500'}">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border-l-8 ${settled ? 'border-emerald-200 opacity-60' : (days >= 14 ? 'border-red-600 animate-pulse' : 'border-blue-500')}">
                         <div class="flex justify-between items-center" onclick='window.openShopModal("${d.id}")'>
-                            <div><b class="text-blue-900 uppercase block">${d.shopName}</b><span class="text-[9px] font-bold text-slate-400">${days} DAYS</span></div>
+                            <div><b class="text-blue-900 uppercase block">${d.shopName} ${settled ? '(SETTLED)' : ''}</b><span class="text-[9px] font-bold text-slate-400">${days} DAYS</span></div>
                             <b class="text-lg">Rs. ${d.balance.toLocaleString()}</b>
                         </div>
                     </div>`;
             });
-            document.getElementById('bill-list').innerHTML = html || '<p class="text-center text-slate-400 py-10">All collections cleared!</p>';
+            document.getElementById('bill-list').innerHTML = html || '<p class="text-center text-slate-400 py-10">All items collected!</p>';
         }
 
         function renderTable(data) {
             let html = '';
             data.forEach(d => {
                 const days = calculateDays(d.date);
-                const settled = d.balance <= 0;
-                html += `<tr class="${settled ? 'settled-row' : (days >= 14 ? 'bg-red-50 text-red-700' : '')}">
+                html += `<tr class="${days >= 14 ? 'overdue-bg text-red-700' : ''}">
                     <td class="p-4 font-bold">${d.billNo}</td>
-                    <td class="p-4 uppercase">${d.shopName} ${settled ? '(PAID)' : ''}</td>
+                    <td class="p-4 uppercase">${d.shopName}</td>
                     <td class="p-4">${d.date}</td>
                     <td class="p-4 text-center">${days}</td>
                     <td class="p-4 text-right font-black">Rs. ${d.balance.toLocaleString()}</td></tr>`;
@@ -201,13 +210,14 @@
             const snap = await getDoc(doc(db, "bills", id));
             const d = snap.data();
             document.getElementById('modal-shop-title').innerText = d.shopName;
-            document.getElementById('modal-days-count').innerText = calculateDays(d.date) + " Days";
+            document.getElementById('modal-days-count').innerText = calculateDays(d.date) + " Days Since Credit";
             document.getElementById('modal-balance').innerText = "Rs. " + d.balance.toLocaleString();
             
             const hSnap = await getDocs(query(collection(db, `bills/${id}/payments`), orderBy("date", "desc")));
             let hHtml = '';
             hSnap.forEach(p => hHtml += `<div class="flex justify-between p-1 border-b"><span>${p.data().date}</span><b>+ Rs. ${p.data().paid}</b></div>`);
-            document.getElementById('history-list').innerHTML = hHtml;
+            document.getElementById('history-list').innerHTML = hHtml || 'No history';
+            document.getElementById('settle-controls').classList.toggle('hidden-section', d.balance <= 0);
             document.getElementById('shop-modal').classList.remove('hidden-section');
         };
 
@@ -217,7 +227,7 @@
             const pay = parseFloat(document.getElementById('settle-amount').value);
             const ref = doc(db, "bills", activeId);
             const snap = await getDoc(ref);
-            if(!pay || pay > snap.data().balance) return alert("Check amount");
+            if(!pay || pay > snap.data().balance) return alert("Invalid amount");
 
             await addDoc(collection(db, `bills/${activeId}/payments`), { paid: pay, date: new Date().toLocaleDateString() });
             await updateDoc(ref, { balance: snap.data().balance - pay });
@@ -228,9 +238,9 @@
         window.downloadPDF = () => {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            doc.text("GAMIRASA FOOD PRODUCT - COLLECTION REPORT", 14, 15);
+            doc.text("GAMIRASA FOOD - OUTSTANDING CREDIT REPORT", 14, 15);
             doc.autoTable({ html: '#report-table', startY: 25 });
-            doc.save(`Gamirasa_Report.pdf`);
+            doc.save(`Gamirasa_Due_Report.pdf`);
         };
     </script>
 </body>
