@@ -1,457 +1,237 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gamirasa Food - Credit Pro</title>
-    <link
-      rel="icon"
-      type="image/png"
-      href="https://cdn-icons-png.flaticon.com/512/2830/2830305.png"
-    />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gamirasa Food - Active Credit</title>
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2830/2830305.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <style>
-      .hidden-section {
-        display: none !important;
-      }
-      .active-tab {
-        border-bottom: 4px solid #1d4ed8;
-        color: #1d4ed8;
-      }
-      .overdue-text {
-        color: #dc2626;
-        font-weight: 900;
-      }
-      .overdue-bg {
-        background-color: #fef2f2 !important;
-      }
+        .hidden-section { display: none !important; }
+        .active-tab { border-bottom: 4px solid #1d4ed8; color: #1d4ed8; }
+        .overdue-text { color: #dc2626; font-weight: 900; }
+        .settled-row { background-color: #f0fdf4 !important; color: #166534; opacity: 0.7; }
     </style>
-  </head>
-  <body class="bg-slate-50 min-h-screen text-slate-900">
-    <div
-      id="login-screen"
-      class="fixed inset-0 bg-blue-900 flex items-center justify-center z-50 p-6"
-    >
-      <div
-        class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center"
-      >
-        <div
-          class="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"
-        >
-          <img
-            src="https://cdn-icons-png.flaticon.com/512/2830/2830305.png"
-            class="w-12 h-12"
-            alt="Logo"
-          />
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-900">
+
+    <div id="login-screen" class="fixed inset-0 bg-blue-900 flex items-center justify-center z-50 p-6">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
+            <img src="https://cdn-icons-png.flaticon.com/512/2830/2830305.png" class="w-16 h-16 mx-auto mb-4" alt="Logo">
+            <h1 class="text-2xl font-black text-blue-900 mb-6 uppercase">Gamirasa Food</h1>
+            <input type="password" id="pin-input" placeholder="PIN (2705)" class="w-full text-center text-3xl p-4 border-b-4 border-slate-100 outline-none mb-6">
+            <button onclick="checkPin()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg">UNLOCK</button>
         </div>
-        <h1
-          class="text-2xl font-black text-blue-900 mb-1 uppercase tracking-tighter"
-        >
-          Gamirasa Food
-        </h1>
-        <p class="text-[10px] text-slate-400 font-bold mb-6 tracking-widest">
-          CREDIT MANAGEMENT SYSTEM
-        </p>
-        <input
-          type="password"
-          id="pin-input"
-          placeholder="ENTER PIN"
-          class="w-full text-center text-3xl p-4 border-b-4 border-slate-100 outline-none mb-6 focus:border-blue-600 transition-all"
-        />
-        <button
-          onclick="checkPin()"
-          class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-all"
-        >
-          SIGN IN
-        </button>
-      </div>
     </div>
 
     <div id="main-app" class="hidden-section max-w-4xl mx-auto">
-      <div class="flex bg-white shadow-sm sticky top-0 z-30">
-        <button
-          id="tab-entry-btn"
-          onclick="showTab('entry')"
-          class="flex-1 py-4 font-bold active-tab text-xs uppercase tracking-widest"
-        >
-          Credit Entry
-        </button>
-        <button
-          id="tab-summary-btn"
-          onclick="showTab('summary')"
-          class="flex-1 py-4 font-bold text-slate-400 text-xs uppercase tracking-widest"
-        >
-          Age Summary
-        </button>
-      </div>
-
-      <div id="tab-entry" class="p-4 space-y-4">
-        <div class="relative group">
-          <input
-            type="text"
-            id="search-input"
-            onkeyup="filterBills()"
-            placeholder="Search Shop Name or Bill No..."
-            class="w-full p-4 pl-12 bg-white rounded-2xl border-2 border-transparent shadow-sm outline-none focus:border-blue-600 transition-all"
-          />
-          <span class="absolute left-4 top-4 text-slate-400">🔍</span>
+        <div class="flex bg-white shadow-sm sticky top-0 z-30">
+            <button id="tab-entry-btn" onclick="showTab('entry')" class="flex-1 py-4 font-bold active-tab text-xs uppercase">Pending Collections</button>
+            <button id="tab-summary-btn" onclick="showTab('summary')" class="flex-1 py-4 font-bold text-slate-400 text-xs uppercase">Final Report</button>
         </div>
 
-        <div class="bg-white p-6 rounded-3xl border border-slate-200">
-          <h3
-            class="font-bold mb-4 text-[10px] uppercase text-slate-400 tracking-widest"
-          >
-            Create New Record
-          </h3>
-          <div class="grid gap-3">
-            <div class="grid grid-cols-2 gap-3">
-              <input
-                id="bill-no"
-                type="text"
-                placeholder="Bill No"
-                class="p-4 bg-slate-50 rounded-xl border outline-none text-sm"
-              />
-              <input
-                id="phone"
-                type="tel"
-                placeholder="Phone"
-                class="p-4 bg-slate-50 rounded-xl border outline-none text-sm"
-              />
+        <div id="tab-entry" class="p-4 space-y-4">
+            <div class="relative">
+                <input type="text" id="search-input" onkeyup="filterBills()" placeholder="Search active shops..." 
+                       class="w-full p-4 pl-12 bg-white rounded-2xl border shadow-sm outline-none focus:border-blue-600">
+                <span class="absolute left-4 top-4 text-slate-400">🔍</span>
             </div>
-            <input
-              id="shop-name"
-              type="text"
-              placeholder="Shop Name"
-              class="p-4 bg-slate-50 rounded-xl border outline-none text-sm"
-            />
-            <input
-              id="amount"
-              type="number"
-              placeholder="Bill Amount (Rs.)"
-              class="p-4 bg-slate-100 rounded-xl font-bold text-blue-700 outline-none border text-lg"
-            />
-            <div class="p-4 bg-blue-50 rounded-xl border border-blue-100">
-              <label
-                class="block text-[10px] font-bold text-blue-600 uppercase mb-1"
-                >Original Credit Date</label
-              >
-              <input
-                id="credit-date"
-                type="date"
-                class="w-full bg-transparent font-bold outline-none"
-              />
+
+            <div class="bg-white p-6 rounded-3xl border">
+                <h3 class="font-bold mb-4 text-[10px] uppercase text-slate-400">Add New Credit</h3>
+                <div class="grid gap-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <input id="bill-no" type="text" placeholder="Bill No" class="p-4 bg-slate-50 rounded-xl border outline-none text-sm">
+                        <input id="phone" type="tel" placeholder="Phone" class="p-4 bg-slate-50 rounded-xl border outline-none text-sm">
+                    </div>
+                    <input id="shop-name" type="text" placeholder="Shop Name" class="p-4 bg-slate-50 rounded-xl border outline-none text-sm">
+                    <input id="amount" type="number" placeholder="Total Amount (Rs.)" class="p-4 bg-slate-100 rounded-xl font-bold text-blue-700 border outline-none text-lg">
+                    <input id="credit-date" type="date" class="p-4 bg-blue-50 rounded-xl border border-blue-100 font-bold outline-none">
+                    <button onclick="addBill()" class="bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg">SAVE CREDIT</button>
+                </div>
             </div>
-            <button
-              onclick="addBill()"
-              class="bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg"
-            >
-              SAVE RECORD
-            </button>
-          </div>
+
+            <div id="bill-list" class="space-y-3"></div>
         </div>
 
-        <div id="bill-list" class="space-y-3"></div>
-      </div>
-
-      <div id="tab-summary" class="p-4 hidden-section">
-        <div class="bg-white rounded-3xl shadow-sm border overflow-hidden">
-          <div
-            class="p-6 flex justify-between items-center bg-slate-50 border-b"
-          >
-            <h3 class="font-bold text-sm">Detailed Age Report</h3>
-            <button
-              onclick="downloadPDF()"
-              class="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md"
-            >
-              PDF DOWNLOAD
-            </button>
-          </div>
-          <div class="overflow-x-auto">
-            <table id="report-table" class="w-full text-left text-[11px]">
-              <thead class="bg-slate-100 text-slate-500 uppercase font-black">
-                <tr>
-                  <th class="p-4">Bill No</th>
-                  <th class="p-4">Shop Name</th>
-                  <th class="p-4">Start Date</th>
-                  <th class="p-4 text-center">Days Old</th>
-                  <th class="p-4 text-right">Balance</th>
-                </tr>
-              </thead>
-              <tbody id="summary-table-body" class="divide-y"></tbody>
-            </table>
-          </div>
+        <div id="tab-summary" class="p-4 hidden-section">
+            <div class="bg-white rounded-3xl shadow-sm border overflow-hidden">
+                <div class="p-6 flex justify-between items-center bg-slate-50 border-b">
+                    <h3 class="font-bold text-sm text-blue-900">Today's Complete Record</h3>
+                    <button onclick="downloadPDF()" class="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-bold">PDF REPORT</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table id="report-table" class="w-full text-left text-[11px]">
+                        <thead class="bg-slate-100 text-slate-500 uppercase font-bold">
+                            <tr>
+                                <th class="p-4">Bill</th><th class="p-4">Shop</th><th class="p-4">Date</th><th class="p-4">Days</th><th class="p-4 text-right">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="summary-table-body" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
 
-    <div
-      id="shop-modal"
-      class="fixed inset-0 bg-slate-900/90 hidden-section flex items-center justify-center p-4 z-[60]"
-    >
-      <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl relative">
-        <button
-          onclick="closeShopModal()"
-          class="absolute top-4 right-4 text-slate-400 text-2xl"
-        >
-          ✕
-        </button>
-        <h2
-          id="modal-shop-title"
-          class="text-xl font-black text-blue-900 uppercase pr-8"
-        ></h2>
-        <p id="modal-phone" class="text-xs text-slate-400 mb-4"></p>
-        <div class="bg-blue-50 p-4 rounded-2xl mb-4 text-xs space-y-1">
-          <div class="flex justify-between">
-            <span>Credit Age:</span>
-            <b id="modal-days-count" class="text-blue-600"></b>
-          </div>
-          <div
-            class="flex justify-between text-blue-800 text-lg font-black border-t pt-2 mt-2"
-          >
-            <span>Balance:</span> <span id="modal-balance"></span>
-          </div>
+    <div id="shop-modal" class="fixed inset-0 bg-slate-900/90 hidden-section flex items-center justify-center p-4 z-[60]">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl relative">
+            <button onclick="closeShopModal()" class="absolute top-4 right-4 text-slate-400 text-2xl">✕</button>
+            <h2 id="modal-shop-title" class="text-xl font-black text-blue-900 uppercase"></h2>
+            <div class="my-4 p-4 bg-slate-50 rounded-2xl text-xs">
+                <div class="flex justify-between"><span>Credit Age:</span> <b id="modal-days-count" class="text-blue-600"></b></div>
+                <div class="flex justify-between text-blue-800 text-lg font-black border-t pt-2 mt-2"><span>Current Balance:</span> <span id="modal-balance"></span></div>
+            </div>
+            <div id="history-list" class="mb-4 space-y-1 text-[10px] max-h-32 overflow-y-auto border-t pt-2"></div>
+            <div id="settle-controls">
+                <input id="settle-amount" type="number" placeholder="Enter Payment Rs." class="w-full p-4 bg-slate-100 rounded-xl mb-4 text-center font-bold border outline-none">
+                <button onclick="confirmSettlement()" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold">SETTLE</button>
+            </div>
         </div>
-        <div class="mb-4">
-          <p class="text-[9px] font-bold text-slate-400 uppercase mb-2">
-            Payment Log
-          </p>
-          <div
-            id="history-list"
-            class="space-y-1 text-[10px] max-h-32 overflow-y-auto pr-1"
-          ></div>
-        </div>
-        <div id="settle-controls">
-          <input
-            id="settle-amount"
-            type="number"
-            placeholder="Enter Payment (Rs.)"
-            class="w-full p-4 bg-slate-100 rounded-xl mb-4 text-center font-bold border outline-none"
-          />
-          <button
-            onclick="confirmSettlement()"
-            class="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-lg"
-          >
-            SETTLE PAYMENT
-          </button>
-        </div>
-      </div>
     </div>
 
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-      import {
-        getFirestore,
-        collection,
-        addDoc,
-        onSnapshot,
-        query,
-        doc,
-        updateDoc,
-        orderBy,
-        serverTimestamp,
-        getDoc,
-        getDocs,
-      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, doc, updateDoc, orderBy, serverTimestamp, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyAplDozNJJNuplf5g1P-ZQEhyHK31pXoSo",
-        authDomain: "gamirasa-credit-tracking.firebaseapp.com",
-        projectId: "gamirasa-credit-tracking",
-        storageBucket: "gamirasa-credit-tracking.firebasestorage.app",
-        messagingSenderId: "786378167527",
-        appId: "1:786378167527:web:03d3f13f5de0d353a7be42",
-      };
+        const firebaseConfig = {
+            apiKey: "AIzaSyAplDozNJJNuplf5g1P-ZQEhyHK31pXoSo",
+            authDomain: "gamirasa-credit-tracking.firebaseapp.com",
+            projectId: "gamirasa-credit-tracking",
+            storageBucket: "gamirasa-credit-tracking.firebasestorage.app",
+            messagingSenderId: "786378167527",
+            appId: "1:786378167527:web:03d3f13f5de0d353a7be42"
+        };
 
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      let activeId = null;
-      let allBillsData = []; // Local cache for filtering
-      document.getElementById("credit-date").valueAsDate = new Date();
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        let activeId = null;
+        let allData = [];
+        document.getElementById('credit-date').valueAsDate = new Date();
 
-      window.checkPin = () => {
-        if (document.getElementById("pin-input").value === "2705") {
-          document
-            .getElementById("login-screen")
-            .classList.add("hidden-section");
-          document
-            .getElementById("main-app")
-            .classList.remove("hidden-section");
-          loadData();
-        } else alert("Access Denied: Wrong PIN");
-      };
+        window.checkPin = () => {
+            if(document.getElementById('pin-input').value === "2705") {
+                document.getElementById('login-screen').classList.add('hidden-section');
+                document.getElementById('main-app').classList.remove('hidden-section');
+                loadData();
+            } else alert("Invalid PIN");
+        };
 
-      window.showTab = (tab) => {
-        document
-          .getElementById("tab-entry")
-          .classList.toggle("hidden-section", tab !== "entry");
-        document
-          .getElementById("tab-summary")
-          .classList.toggle("hidden-section", tab !== "summary");
-        document
-          .getElementById("tab-entry-btn")
-          .classList.toggle("active-tab", tab === "entry");
-        document
-          .getElementById("tab-summary-btn")
-          .classList.toggle("active-tab", tab === "summary");
-      };
+        window.showTab = (tab) => {
+            document.getElementById('tab-entry').classList.toggle('hidden-section', tab !== 'entry');
+            document.getElementById('tab-summary').classList.toggle('hidden-section', tab !== 'summary');
+            document.getElementById('tab-entry-btn').classList.toggle('active-tab', tab === 'entry');
+            document.getElementById('tab-summary-btn').classList.toggle('active-tab', tab === 'summary');
+        };
 
-      const calculateDays = (dateStr) => {
-        const start = new Date(dateStr);
-        const today = new Date();
-        const diff = today - start;
-        return Math.floor(diff / (1000 * 60 * 60 * 24));
-      };
+        const calculateDays = (dateStr) => {
+            const diff = new Date() - new Date(dateStr);
+            return Math.floor(diff / (1000 * 60 * 60 * 24));
+        };
 
-      // NEW SEARCH FUNCTION
-      window.filterBills = () => {
-        const term = document
-          .getElementById("search-input")
-          .value.toLowerCase();
-        renderList(
-          allBillsData.filter(
-            (b) =>
-              b.shopName.toLowerCase().includes(term) ||
-              b.billNo.toLowerCase().includes(term),
-          ),
-        );
-      };
+        window.filterBills = () => {
+            const term = document.getElementById('search-input').value.toLowerCase();
+            // Search still lets you find settled shops, but main list hides them
+            renderList(allData.filter(b => (b.shopName.toLowerCase().includes(term) || b.billNo.includes(term))));
+        };
 
-      window.addBill = async () => {
-        const b = document.getElementById("bill-no").value;
-        const s = document.getElementById("shop-name").value;
-        const p = document.getElementById("phone").value;
-        const a = parseFloat(document.getElementById("amount").value);
-        const d = document.getElementById("credit-date").value;
-        if (!b || !s || isNaN(a)) return alert("Fill data!");
-        if (p.length !== 10) return alert("Phone must be 10 digits");
+        window.addBill = async () => {
+            const b = document.getElementById('bill-no').value;
+            const s = document.getElementById('shop-name').value;
+            const p = document.getElementById('phone').value;
+            const a = parseFloat(document.getElementById('amount').value);
+            const d = document.getElementById('credit-date').value;
+            if(!b || !s || isNaN(a)) return alert("Check entry");
 
-        await addDoc(collection(db, "bills"), {
-          billNo: b,
-          shopName: s,
-          phone: p,
-          amount: a,
-          balance: a,
-          date: d,
-          createdAt: serverTimestamp(),
-        });
-        document.querySelectorAll("input").forEach((i) => (i.value = ""));
-        document.getElementById("credit-date").valueAsDate = new Date();
-      };
+            await addDoc(collection(db, "bills"), {
+                billNo: b, shopName: s, phone: p, amount: a, balance: a,
+                date: d, createdAt: serverTimestamp()
+            });
+            document.querySelectorAll('input').forEach(i => i.value = '');
+            document.getElementById('credit-date').valueAsDate = new Date();
+        };
 
-      function loadData() {
-        onSnapshot(
-          query(collection(db, "bills"), orderBy("createdAt", "desc")),
-          (snap) => {
-            allBillsData = [];
-            snap.forEach((doc) =>
-              allBillsData.push({ id: doc.id, ...doc.data() }),
-            );
-            renderList(allBillsData);
-            renderTable(allBillsData);
-          },
-        );
-      }
+        function loadData() {
+            onSnapshot(query(collection(db, "bills"), orderBy("createdAt", "desc")), (snap) => {
+                allData = [];
+                snap.forEach(doc => allData.push({ id: doc.id, ...doc.data() }));
+                
+                // MAIN LIST LOGIC: Hide if balance is 0
+                renderList(allData.filter(b => b.balance > 0));
+                
+                // SUMMARY LOGIC: Show everything
+                renderTable(allData);
+            });
+        }
 
-      function renderList(data) {
-        let html = "";
-        data.forEach((d) => {
-          const days = calculateDays(d.date);
-          const isOld = days >= 14 && d.balance > 0;
-          html += `
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border-l-8 ${isOld ? "border-red-600" : d.balance > 0 ? "border-blue-500" : "border-emerald-500"}">
+        function renderList(data) {
+            let html = '';
+            data.forEach(d => {
+                const days = calculateDays(d.date);
+                html += `
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border-l-8 ${days >= 14 ? 'border-red-600' : 'border-blue-500'}">
                         <div class="flex justify-between items-center" onclick='window.openShopModal("${d.id}")'>
-                            <div><b class="text-blue-900 uppercase block leading-tight">${d.shopName}</b><span class="text-[9px] font-bold ${isOld ? "text-red-600" : "text-slate-400"}">${days} DAYS SINCE CREDIT</span></div>
-                            <div class="text-right"><p class="text-[9px] text-slate-400 font-bold">BALANCE</p><b class="text-lg">Rs. ${d.balance.toLocaleString()}</b></div>
+                            <div><b class="text-blue-900 uppercase block">${d.shopName}</b><span class="text-[9px] font-bold text-slate-400">${days} DAYS</span></div>
+                            <b class="text-lg">Rs. ${d.balance.toLocaleString()}</b>
                         </div>
                     </div>`;
-        });
-        document.getElementById("bill-list").innerHTML =
-          html ||
-          '<p class="text-center text-slate-400 py-10">No records found</p>';
-      }
+            });
+            document.getElementById('bill-list').innerHTML = html || '<p class="text-center text-slate-400 py-10">All collections cleared!</p>';
+        }
 
-      function renderTable(data) {
-        let html = "";
-        data.forEach((d) => {
-          const days = calculateDays(d.date);
-          const isOld = days >= 14 && d.balance > 0;
-          html += `<tr class="${isOld ? "overdue-bg" : ""}"><td class="p-4 font-bold">${d.billNo}</td><td class="p-4 uppercase">${d.shopName}</td><td class="p-4">${d.date}</td><td class="p-4 text-center ${isOld ? "overdue-text" : ""}">${days}</td><td class="p-4 text-right font-black">Rs. ${d.balance.toLocaleString()}</td></tr>`;
-        });
-        document.getElementById("summary-table-body").innerHTML = html;
-      }
+        function renderTable(data) {
+            let html = '';
+            data.forEach(d => {
+                const days = calculateDays(d.date);
+                const settled = d.balance <= 0;
+                html += `<tr class="${settled ? 'settled-row' : (days >= 14 ? 'bg-red-50 text-red-700' : '')}">
+                    <td class="p-4 font-bold">${d.billNo}</td>
+                    <td class="p-4 uppercase">${d.shopName} ${settled ? '(PAID)' : ''}</td>
+                    <td class="p-4">${d.date}</td>
+                    <td class="p-4 text-center">${days}</td>
+                    <td class="p-4 text-right font-black">Rs. ${d.balance.toLocaleString()}</td></tr>`;
+            });
+            document.getElementById('summary-table-body').innerHTML = html;
+        }
 
-      window.openShopModal = async (id) => {
-        activeId = id;
-        const snap = await getDoc(doc(db, "bills", id));
-        const d = snap.data();
-        document.getElementById("modal-shop-title").innerText = d.shopName;
-        document.getElementById("modal-phone").innerText =
-          "📞 Contact: " + d.phone;
-        document.getElementById("modal-days-count").innerText =
-          calculateDays(d.date) + " Days Old";
-        document.getElementById("modal-balance").innerText =
-          "Rs. " + d.balance.toLocaleString();
+        window.openShopModal = async (id) => {
+            activeId = id;
+            const snap = await getDoc(doc(db, "bills", id));
+            const d = snap.data();
+            document.getElementById('modal-shop-title').innerText = d.shopName;
+            document.getElementById('modal-days-count').innerText = calculateDays(d.date) + " Days";
+            document.getElementById('modal-balance').innerText = "Rs. " + d.balance.toLocaleString();
+            
+            const hSnap = await getDocs(query(collection(db, `bills/${id}/payments`), orderBy("date", "desc")));
+            let hHtml = '';
+            hSnap.forEach(p => hHtml += `<div class="flex justify-between p-1 border-b"><span>${p.data().date}</span><b>+ Rs. ${p.data().paid}</b></div>`);
+            document.getElementById('history-list').innerHTML = hHtml;
+            document.getElementById('shop-modal').classList.remove('hidden-section');
+        };
 
-        const hSnap = await getDocs(
-          query(
-            collection(db, `bills/${id}/payments`),
-            orderBy("date", "desc"),
-          ),
-        );
-        let hHtml = "";
-        hSnap.forEach(
-          (p) =>
-            (hHtml += `<div class="flex justify-between p-2 bg-slate-50 border-b"><span>${p.data().date}</span><b>+ Rs. ${p.data().paid.toLocaleString()}</b></div>`),
-        );
-        document.getElementById("history-list").innerHTML =
-          hHtml || "No payments yet.";
-        document
-          .getElementById("settle-controls")
-          .classList.toggle("hidden-section", d.balance <= 0);
-        document
-          .getElementById("shop-modal")
-          .classList.remove("hidden-section");
-      };
+        window.closeShopModal = () => document.getElementById('shop-modal').classList.add('hidden-section');
 
-      window.closeShopModal = () =>
-        document.getElementById("shop-modal").classList.add("hidden-section");
+        window.confirmSettlement = async () => {
+            const pay = parseFloat(document.getElementById('settle-amount').value);
+            const ref = doc(db, "bills", activeId);
+            const snap = await getDoc(ref);
+            if(!pay || pay > snap.data().balance) return alert("Check amount");
 
-      window.confirmSettlement = async () => {
-        const pay = parseFloat(document.getElementById("settle-amount").value);
-        const ref = doc(db, "bills", activeId);
-        const snap = await getDoc(ref);
-        if (!pay || pay > snap.data().balance) return alert("Invalid amount");
+            await addDoc(collection(db, `bills/${activeId}/payments`), { paid: pay, date: new Date().toLocaleDateString() });
+            await updateDoc(ref, { balance: snap.data().balance - pay });
+            closeShopModal();
+            document.getElementById('settle-amount').value = '';
+        };
 
-        await addDoc(collection(db, `bills/${activeId}/payments`), {
-          paid: pay,
-          date: new Date().toLocaleDateString(),
-        });
-        await updateDoc(ref, { balance: snap.data().balance - pay });
-        closeShopModal();
-        document.getElementById("settle-amount").value = "";
-      };
-
-      window.downloadPDF = () => {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF("p", "mm", "a4");
-        doc.text("GAMIRASA FOOD - CREDIT AGE SUMMARY", 14, 15);
-        doc.autoTable({
-          html: "#report-table",
-          startY: 25,
-          didParseCell: function (data) {
-            if (data.row.section === "body" && data.column.index === 3) {
-              const days = parseInt(data.cell.text[0]);
-              if (days >= 14) {
-                data.cell.styles.textColor = [220, 38, 38];
-                data.cell.styles.fontStyle = "bold";
-              }
-            }
-          },
-        });
-        doc.save(`Gamirasa_Age_Summary.pdf`);
-      };
+        window.downloadPDF = () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("GAMIRASA FOOD PRODUCT - COLLECTION REPORT", 14, 15);
+            doc.autoTable({ html: '#report-table', startY: 25 });
+            doc.save(`Gamirasa_Report.pdf`);
+        };
     </script>
-  </body>
+</body>
 </html>
