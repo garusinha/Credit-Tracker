@@ -449,10 +449,11 @@
       window.downloadPDF = () => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        doc.text("GAMIRASA FOOD - OUTSTANDING CREDIT REPORT", 14, 15);
+        doc.text("GAMIRASA FOOD - OUTSTANDING CREDIT REPORT - ROHAN", 14, 15);
         doc.autoTable({ html: "#report-table", startY: 25 });
         doc.save(`Gamirasa_Due_Report.pdf`);
       };
     </script>
   </body>
 </html>
+
