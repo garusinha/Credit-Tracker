@@ -448,126 +448,96 @@
       window.downloadPDF = () => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        const today = new Date().toLocaleDateString();
-        const fileName = `Gamirasa_Report_${new Date().toISOString().split("T")[0]}.pdf`;
 
-        // 1. BRANDING & HEADER
-        doc.setFillColor(30, 58, 138); // Blue-900
-        doc.rect(0, 0, 210, 40, "F");
-
-        doc.setFontSize(22);
-        doc.setTextColor(255, 255, 255);
-        doc.setFont("helvetica", "bold");
-        doc.text("GAMIRASA FOOD", 15, 20);
-
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text("Daily Credit & Collection Report", 15, 28);
-        doc.text(`Date: ${today}`, 160, 28);
-
-        // 2. DATA EXTRACTION
+        // 1. DATA COLLECTION (Safe Method)
         const table = document.getElementById("report-table");
         const rows = [];
         const bodyRows = table.querySelectorAll("tbody tr");
-        let totalOutstanding = 0;
         let overdueCount = 0;
+        let totalAmount = 0;
 
         bodyRows.forEach((row) => {
           const cols = row.querySelectorAll("td");
-          const rowData = [];
-
-          // Check if it's the "Total" row or a regular data row
-          if (cols.length >= 5) {
+          // Only process rows that have all 5 data columns (skips the blue total row)
+          if (cols.length === 5 && !row.classList.contains("bg-blue-900")) {
             const billNo = cols[0].innerText;
             const shop = cols[1].innerText;
             const date = cols[2].innerText;
-            const days = parseInt(cols[3].innerText);
-            const balanceText = cols[4].innerText
-              .replace("Rs. ", "")
-              .replace(/,/g, "");
-            const balance = parseFloat(balanceText);
+            const days = parseInt(cols[3].innerText) || 0;
+            const balanceText = cols[4].innerText.replace(/[^0-9.]/g, "");
+            const balance = parseFloat(balanceText) || 0;
 
-            if (!isNaN(balance) && !billNo.includes("TOTAL")) {
-              rows.push([
-                billNo,
-                shop,
-                date,
-                `${days} Days`,
-                `Rs. ${balance.toLocaleString()}`,
-              ]);
-              totalOutstanding += balance;
-              if (days >= 14) overdueCount++;
-            }
+            rows.push([
+              billNo,
+              shop,
+              date,
+              days,
+              `Rs. ${balance.toLocaleString()}`,
+            ]);
+
+            totalAmount += balance;
+            if (days >= 14) overdueCount++;
           }
         });
 
-        // 3. SUMMARY BOX
-        doc.setDrawColor(200);
-        doc.line(15, 45, 195, 45);
-
-        doc.setFontSize(9);
-        doc.setTextColor(50);
-        doc.text(`Total Active Credits: ${rows.length}`, 15, 52);
-        doc.setTextColor(overdueCount > 0 ? [200, 0, 0] : [50, 50, 50]);
-        doc.text(`Overdue (14+ Days): ${overdueCount}`, 70, 52);
-        doc.setTextColor(30, 58, 138);
+        // 2. HEADER DESIGN
+        doc.setFillColor(30, 58, 138); // Dark Blue
+        doc.rect(0, 0, 210, 40, "F");
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
         doc.setFont("helvetica", "bold");
-        doc.text(
-          `Total Balance: Rs. ${totalOutstanding.toLocaleString()}`,
-          140,
-          52,
-        );
+        doc.text("GAMIRASA FOOD", 15, 20);
+        doc.setFontSize(10);
+        doc.text("OFFICIAL CREDIT COLLECTION REPORT", 15, 28);
+        doc.text(`DATE: ${new Date().toLocaleDateString()}`, 160, 28);
 
-        // 4. MAIN TABLE
+        // 3. SUMMARY BOX
+        doc.setTextColor(40, 40, 40);
+        doc.setFontSize(10);
+        doc.text(`Total Bills: ${rows.length}`, 15, 50);
+        doc.text(`Overdue (14+ Days): ${overdueCount}`, 60, 50);
+        doc.setFont("helvetica", "bold");
+        doc.text(`Grand Total: Rs. ${totalAmount.toLocaleString()}`, 130, 50);
+
+        // 4. TABLE GENERATION
         doc.autoTable({
-          startY: 60,
-          head: [["Bill No", "Shop Name", "Invoice Date", "Age", "Balance"]],
+          startY: 55,
+          head: [["Bill No", "Shop Name", "Date", "Age (Days)", "Balance"]],
           body: rows,
-          theme: "striped",
+          theme: "grid",
           headStyles: {
             fillColor: [30, 58, 138],
-            textColor: 255,
-            fontSize: 10,
+            textColor: [255, 255, 255],
             fontStyle: "bold",
-            halign: "center",
           },
           columnStyles: {
-            0: { halign: "left", cellWidth: 25 },
-            1: { halign: "left", fontStyle: "bold" },
-            2: { halign: "center" },
             3: { halign: "center" },
-            4: { halign: "right", fontStyle: "bold" },
+            4: { halign: "right" },
           },
           didParseCell: function (data) {
             if (data.section === "body" && data.column.index === 3) {
-              const days = parseInt(data.cell.raw);
-              if (days >= 14) {
-                data.cell.styles.textColor = [200, 0, 0];
+              const val = parseInt(data.cell.raw);
+              if (val >= 14) {
+                data.cell.styles.textColor = [200, 0, 0]; // Red text for old age
                 data.cell.styles.fontStyle = "bold";
               }
             }
           },
-          alternateRowStyles: { fillColor: [245, 247, 250] },
-          margin: { left: 15, right: 15 },
         });
 
-        // 5. FOOTER
-        const finalY = doc.lastAutoTable.finalY + 10;
-        doc.setFontSize(8);
-        doc.setTextColor(150);
+        // 5. FOOTER & SAVE
+        const finalY = doc.lastAutoTable.finalY + 15;
+        doc.setFontSize(9);
         doc.setFont("helvetica", "italic");
         doc.text(
-          "Note: This is an electronically generated report for Gamirasa Food Reps.",
+          "Generated by Gamirasa Pro Tracker. Authorized Sign: ________________",
           15,
           finalY,
         );
-        doc.text(
-          "Authorized Signature: __________________________",
-          130,
-          finalY + 10,
-        );
 
-        doc.save(fileName);
+        doc.save(
+          `Gamirasa_Report_${new Date().toISOString().split("T")[0]}.pdf`,
+        );
       };
     </script>
   </body>
