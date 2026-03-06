@@ -449,11 +449,54 @@
       window.downloadPDF = () => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        doc.text("GAMIRASA FOOD - OUTSTANDING CREDIT REPORT - ROHAN", 14, 15);
-        doc.autoTable({ html: "#report-table", startY: 25 });
-        doc.save(`Gamirasa_Due_Report.pdf`);
+
+        // Header text
+        doc.setFontSize(16);
+        doc.setTextColor(40);
+        doc.text("GAMIRASA FOOD - OUTSTANDING CREDIT REPORT", 14, 15);
+
+        // Date of report
+        doc.setFontSize(10);
+        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 22);
+
+        doc.autoTable({
+          html: "#report-table",
+          startY: 30,
+          theme: "grid",
+          headStyles: { fillGray: [40, 40, 40], textColor: 255 },
+          didParseCell: function (data) {
+            // Check if the cell is in the body (not header)
+            if (data.section === "body") {
+              // Column index 3 is the "Days" column
+              const days = parseInt(data.row.cells[3].text);
+
+              // If days are 14 or more, apply red styling to the whole row
+              if (days >= 14) {
+                data.cell.styles.fillColor = [255, 235, 235]; // Light red background
+                data.cell.styles.textColor = [200, 0, 0]; // Dark red text
+                data.cell.styles.fontStyle = "bold";
+              }
+            }
+          },
+          // Ensure the "Total" row we added earlier keeps its distinct look
+          didDrawCell: function (data) {
+            if (
+              data.section === "body" &&
+              data.row.index === doc.previousAutoTable.table.body.length - 1
+            ) {
+              const lastRowText = data.row.cells[0].text[0];
+              if (lastRowText && lastRowText.includes("TOTAL")) {
+                data.cell.styles.fillColor = [30, 58, 138]; // Blue-900
+                data.cell.styles.textColor = [255, 255, 0]; // Yellow
+              }
+            }
+          },
+        });
+
+        doc.save(
+          `Gamirasa_Due_Report_${new Date().toISOString().split("T")[0]}.pdf`,
+        );
       };
     </script>
   </body>
 </html>
-
