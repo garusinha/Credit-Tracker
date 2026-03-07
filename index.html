@@ -246,6 +246,7 @@
         doc,
         updateDoc,
         orderBy,
+        where, // Added this
         serverTimestamp,
         getDoc,
         getDocs,
@@ -435,57 +436,129 @@
           '<p class="text-center text-slate-400 py-10">All items collected!</p>';
       }
 
-      window.openShopModal = async (shopName) => {
-        // Query all bills for this specific shop
+      // Renamed to match the onclick in your renderShopList function
+      window.openShopHistory = async (shopName) => {
         const q = query(
           collection(db, "bills"),
           where("shopName", "==", shopName),
+          orderBy("date", "asc"),
         );
-        const querySnapshot = await getDocs(q);
 
+        const querySnapshot = await getDocs(q);
         let totalShopBalance = 0;
         let historyHtml = "";
+        activeId = null; // Reset global activeId
 
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
+        querySnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const id = docSnap.id;
+
+          // Logic: Identify the oldest bill that still has a balance to settle it first
+          if (!activeId && data.balance > 0) {
+            activeId = id;
+          }
+
           totalShopBalance += data.balance;
 
-          // Add each bill to the history list
           historyHtml += `
-      <div class="p-2 border-b mb-2 bg-slate-50 rounded">
+      <div class="p-2 border-b mb-2 ${data.balance <= 0 ? "bg-emerald-50" : "bg-slate-50"} rounded">
         <div class="flex justify-between font-bold">
-          <span>Bill: ${data.billNo}</span>
+          <span>Bill: ${data.billNo} ${data.balance <= 0 ? "✅" : ""}</span>
           <span>Rs. ${data.balance.toLocaleString()}</span>
         </div>
-        <div class="text-[9px] text-slate-500">Issued: ${data.date}</div>
+        <div class="text-[9px] text-slate-500 uppercase">Date: ${data.date}</div>
       </div>`;
         });
 
         document.getElementById("modal-shop-title").innerText = shopName;
         document.getElementById("modal-balance").innerText =
-          "Total: Rs. " + totalShopBalance.toLocaleString();
+          "Rs. " + totalShopBalance.toLocaleString();
         document.getElementById("history-list").innerHTML = historyHtml;
+
+        // Show/Hide input based on if there is debt
+        document
+          .getElementById("settle-controls")
+          .classList.toggle("hidden", totalShopBalance <= 0);
         document
           .getElementById("shop-modal")
           .classList.remove("hidden-section");
+      };
+
+      window.confirmSettlement = async () => {
+        const amountInput = document.getElementById("settle-amount");
+        const pay = parseFloat(amountInput.value);
+
+        if (!activeId) return alert("No pending bills found for this shop.");
+        if (!pay || pay <= 0)
+          return alert("Please enter a valid payment amount.");
+
+        try {
+          const ref = doc(db, "bills", activeId);
+          const snap = await getDoc(ref);
+          const currentBalance = snap.data().balance;
+
+          if (pay > currentBalance) {
+            return alert(
+              `Payment exceeds this bill's balance (Max: Rs. ${currentBalance}). Please settle bills one by one.`,
+            );
+          }
+
+          // Update the bill - Original data is PRESERVED, only balance changes
+          await updateDoc(ref, {
+            balance: currentBalance - pay,
+          });
+
+          amountInput.value = "";
+          closeShopModal();
+          // Notification for the user
+          console.log("Settlement successful for ID:", activeId);
+        } catch (error) {
+          console.error("Error settling:", error);
+          alert("System Error: Could not update balance.");
+        }
       };
 
       window.closeShopModal = () =>
         document.getElementById("shop-modal").classList.add("hidden-section");
 
       window.confirmSettlement = async () => {
-        const pay = parseFloat(document.getElementById("settle-amount").value);
-        const ref = doc(db, "bills", activeId);
-        const snap = await getDoc(ref);
-        if (!pay || pay > snap.data().balance) return alert("Invalid amount");
+        const payInput = document.getElementById("settle-amount");
+        const pay = parseFloat(payInput.value);
 
-        await addDoc(collection(db, `bills/${activeId}/payments`), {
-          paid: pay,
-          date: new Date().toLocaleDateString(),
-        });
-        await updateDoc(ref, { balance: snap.data().balance - pay });
-        closeShopModal();
-        document.getElementById("settle-amount").value = "";
+        if (!activeId)
+          return alert("No active pending bills found for this shop.");
+        if (!pay || pay <= 0) return alert("Please enter a valid amount");
+
+        try {
+          const ref = doc(db, "bills", activeId);
+          const snap = await getDoc(ref);
+          const currentBalance = snap.data().balance;
+
+          if (pay > currentBalance) {
+            return alert(
+              `Amount exceeds bill balance (Max: Rs. ${currentBalance})`,
+            );
+          }
+
+          // Update the existing bill - NEVER REMOVES DATA
+          await updateDoc(ref, {
+            balance: currentBalance - pay,
+            lastPaymentDate: serverTimestamp(),
+          });
+
+          // Optional: Log payment in a sub-collection for history
+          await addDoc(collection(db, `bills/${activeId}/payments`), {
+            amountPaid: pay,
+            date: new Date().toISOString(),
+          });
+
+          payInput.value = "";
+          closeShopModal();
+          alert("Payment Successful!");
+        } catch (error) {
+          console.error("Settlement Error:", error);
+          alert("Error processing payment. Check console.");
+        }
       };
       window.downloadPDF = () => {
         const { jsPDF } = window.jspdf;
