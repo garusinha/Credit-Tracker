@@ -314,12 +314,18 @@
 
       window.addBill = async () => {
         const b = document.getElementById("bill-no").value;
-        const s = document.getElementById("shop-name").value;
+        const s = document
+          .getElementById("shop-name")
+          .value.trim()
+          .toUpperCase();
         const p = document.getElementById("phone").value;
         const a = parseFloat(document.getElementById("amount").value);
         const d = document.getElementById("credit-date").value;
-        if (!b || !s || isNaN(a)) return alert("Error in fields");
 
+        if (!b || !s || isNaN(a))
+          return alert("Please fill all required fields");
+
+        // We add the record. The Shop Name acts as the grouping key.
         await addDoc(collection(db, "bills"), {
           billNo: b,
           shopName: s,
@@ -328,10 +334,14 @@
           balance: a,
           date: d,
           createdAt: serverTimestamp(),
+          status: "active", // Ensures data is never removed, only filtered by status
         });
+
+        // Clear inputs
         document.querySelectorAll("input").forEach((i) => (i.value = ""));
         document.getElementById("credit-date").valueAsDate = new Date();
       };
+
       function loadData() {
         onSnapshot(
           query(collection(db, "bills"), orderBy("createdAt", "desc")),
@@ -339,17 +349,45 @@
             allData = [];
             snap.forEach((doc) => allData.push({ id: doc.id, ...doc.data() }));
 
-            // MAIN LIST: Only show active balance > 0
-            renderList(allData.filter((b) => b.balance > 0));
+            // Grouping by Shop Name so you see "Shop-wise" entries
+            const groupedShops = allData.reduce((acc, bill) => {
+              if (!acc[bill.shopName]) {
+                acc[bill.shopName] = {
+                  name: bill.shopName,
+                  totalBalance: 0,
+                  bills: [],
+                };
+              }
+              acc[bill.shopName].totalBalance += bill.balance;
+              acc[bill.shopName].bills.push(bill);
+              return acc;
+            }, {});
 
-            // SUMMARY TAB: Sort by date (Oldest first) and filter unpaid
-            const unpaidBills = allData
-              .filter((b) => b.balance > 0)
-              .sort((a, b) => new Date(a.date) - new Date(b.date)); // Sort by date ascending
-
-            renderTable(unpaidBills);
+            renderShopList(Object.values(groupedShops));
           },
         );
+      }
+
+      function renderShopList(shops) {
+        let html = "";
+        shops.forEach((shop) => {
+          if (shop.totalBalance > 0) {
+            // Only show shops that still owe money
+            html += `
+        <div class="bg-white p-5 rounded-2xl shadow-sm border-l-8 border-blue-500 mb-3" 
+             onclick="openShopHistory('${shop.name}')">
+          <div class="flex justify-between items-center">
+            <div>
+              <b class="text-blue-900 uppercase block">${shop.name}</b>
+              <span class="text-[9px] font-bold text-slate-400">${shop.bills.length} ACTIVE BILLS</span>
+            </div>
+            <b class="text-lg">Rs. ${shop.totalBalance.toLocaleString()}</b>
+          </div>
+        </div>`;
+          }
+        });
+        document.getElementById("bill-list").innerHTML =
+          html || '<p class="text-center">No Credits Found</p>';
       }
 
       function renderTable(data) {
@@ -397,32 +435,36 @@
           '<p class="text-center text-slate-400 py-10">All items collected!</p>';
       }
 
-      window.openShopModal = async (id) => {
-        activeId = id;
-        const snap = await getDoc(doc(db, "bills", id));
-        const d = snap.data();
-        document.getElementById("modal-shop-title").innerText = d.shopName;
-        document.getElementById("modal-days-count").innerText =
-          calculateDays(d.date) + " Days Since Credit";
-        document.getElementById("modal-balance").innerText =
-          "Rs. " + d.balance.toLocaleString();
+      window.openShopModal = async (shopName) => {
+        // Query all bills for this specific shop
+        const q = query(
+          collection(db, "bills"),
+          where("shopName", "==", shopName),
+        );
+        const querySnapshot = await getDocs(q);
 
-        const hSnap = await getDocs(
-          query(
-            collection(db, `bills/${id}/payments`),
-            orderBy("date", "desc"),
-          ),
-        );
-        let hHtml = "";
-        hSnap.forEach(
-          (p) =>
-            (hHtml += `<div class="flex justify-between p-1 border-b"><span>${p.data().date}</span><b>+ Rs. ${p.data().paid}</b></div>`),
-        );
-        document.getElementById("history-list").innerHTML =
-          hHtml || "No history";
-        document
-          .getElementById("settle-controls")
-          .classList.toggle("hidden-section", d.balance <= 0);
+        let totalShopBalance = 0;
+        let historyHtml = "";
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          totalShopBalance += data.balance;
+
+          // Add each bill to the history list
+          historyHtml += `
+      <div class="p-2 border-b mb-2 bg-slate-50 rounded">
+        <div class="flex justify-between font-bold">
+          <span>Bill: ${data.billNo}</span>
+          <span>Rs. ${data.balance.toLocaleString()}</span>
+        </div>
+        <div class="text-[9px] text-slate-500">Issued: ${data.date}</div>
+      </div>`;
+        });
+
+        document.getElementById("modal-shop-title").innerText = shopName;
+        document.getElementById("modal-balance").innerText =
+          "Total: Rs. " + totalShopBalance.toLocaleString();
+        document.getElementById("history-list").innerHTML = historyHtml;
         document
           .getElementById("shop-modal")
           .classList.remove("hidden-section");
