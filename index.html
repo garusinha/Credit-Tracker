@@ -454,45 +454,65 @@
           html +
           `<tr class="bg-slate-900 text-white"><td colspan="2" class="p-4 text-right">TOTAL:</td><td class="p-4 text-right font-black">Rs. ${total.toLocaleString()}</td></tr>`;
       };
-
       window.downloadTotalCreditPDF = () => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         const today = new Date();
+
         doc.setFontSize(16);
         doc.text("TOTAL OUTSTANDING CREDIT LIST", 15, 15);
+
+        // SORTING LOGIC: Oldest Date (a) to Newest Date (b)
+        const sortedBills = allData
+          .filter((b) => b.balance > 0)
+          .sort((a, b) => new Date(a.date) - new Date(b.date));
+
         const rows = [];
         let grandTotal = 0;
-        allData
-          .filter((b) => b.balance > 0)
-          .forEach((b) => {
-            const age = Math.floor(
-              (today - new Date(b.date)) / (1000 * 60 * 60 * 24),
-            );
-            grandTotal += b.balance;
-            rows.push([
-              b.shopName,
-              b.billNo,
-              b.date,
-              age,
-              `Rs. ${b.balance.toLocaleString()}`,
-            ]);
-          });
+
+        sortedBills.forEach((b) => {
+          const billDate = new Date(b.date);
+          const age = Math.floor((today - billDate) / (1000 * 60 * 60 * 24));
+
+          grandTotal += b.balance;
+
+          rows.push([
+            b.shopName,
+            b.billNo,
+            b.date,
+            age, // Just the number for easier row-styling logic
+            `Rs. ${b.balance.toLocaleString()}`,
+          ]);
+        });
+
         doc.autoTable({
           startY: 30,
-          head: [["Shop Name", "Bill No", "Date", "Age", "Balance"]],
+          head: [["Shop Name", "Bill No", "Date", "Age (Days)", "Balance"]],
           body: rows,
+          headStyles: { fillColor: [30, 41, 59] }, // Slate-900 style
           didParseCell: (data) => {
-            if (data.column.index === 3 && parseInt(data.cell.raw) >= 14)
-              data.cell.styles.textColor = [200, 0, 0];
+            // If Age (column index 3) is 14 days or more, make it Red/Bold
+            if (data.column.index === 3) {
+              const ageValue = parseInt(data.cell.raw);
+              if (ageValue >= 14) {
+                data.cell.styles.textColor = [200, 0, 0];
+                data.cell.styles.fontStyle = "bold";
+              }
+            }
           },
         });
+
+        const finalY = doc.lastAutoTable.finalY || 30;
+        doc.setFontSize(11);
         doc.text(
-          `GRAND TOTAL: Rs. ${grandTotal.toLocaleString()}`,
+          `GRAND TOTAL OUTSTANDING: Rs. ${grandTotal.toLocaleString()}`,
           15,
-          doc.lastAutoTable.finalY + 10,
+          finalY + 10,
         );
-        doc.save(`Total_Outstanding_${today.toISOString().split("T")[0]}.pdf`);
+
+        doc.save(
+          `Outstanding_Oldest_First_${today.toISOString().split("T")[0]}.pdf`,
+        );
       };
 
       window.downloadDailyPDF = () => {
