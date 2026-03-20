@@ -514,9 +514,10 @@
               return acc;
             }, {});
 
-            currentActiveShops = Object.values(grouped).filter((s) =>
-              s.bills.some((bill) => bill.balance !== 0),
+            currentActiveShops = Object.values(grouped).filter(
+              (s) => s.total > 0.01,
             );
+
             filterShopList();
             updateDueReport();
           },
@@ -702,29 +703,50 @@
       window.confirmSettlement = async () => {
         const val = parseFloat(document.getElementById("settle-amount").value);
         const shopName = document.getElementById("modal-shop-title").innerText;
-        if (!activeBillId || isNaN(val)) return;
 
-        if (window.isReadOnly) {
-          await addDoc(collection(db, "pending_approvals"), {
-            billId: activeBillId,
-            shopName: shopName,
-            amount: val,
-            status: "pending",
-            requestedAt: serverTimestamp(),
-            requestedBy: "Viewer",
-          });
-          alert("Submitted for approval!");
-        } else {
-          const ref = doc(db, "bills", activeBillId);
-          const snap = await getDoc(ref);
-          await updateDoc(ref, {
-            balance: snap.data().balance - val,
-            lastPaymentDate: serverTimestamp(),
-          });
-          alert("Settled!");
+        if (!activeBillId || isNaN(val) || val <= 0) {
+          alert("Please enter a valid amount greater than 0.");
+          return;
         }
-        closeShopModal();
-        document.getElementById("settle-amount").value = "";
+
+        // Find the specific bill to check its current balance
+        const billRef = doc(db, "bills", activeBillId);
+        const billSnap = await getDoc(billRef);
+
+        if (billSnap.exists()) {
+          const currentBalance = billSnap.data().balance;
+
+          // ERROR CHECK: If typed value is more than the credit
+          if (val > currentBalance) {
+            alert(
+              `Error: You cannot collect more than the balance. \nMax allowed: Rs. ${currentBalance.toLocaleString()}`,
+            );
+            return; // Stop the function here
+          }
+
+          if (window.isReadOnly) {
+            // VIEWER MODE: Create a pending request
+            await addDoc(collection(db, "pending_approvals"), {
+              billId: activeBillId,
+              shopName: shopName,
+              amount: val,
+              status: "pending",
+              requestedAt: serverTimestamp(),
+              requestedBy: "Viewer",
+            });
+            alert("Collection submitted! Waiting for Admin approval.");
+          } else {
+            // ADMIN MODE: Direct settlement
+            await updateDoc(billRef, {
+              balance: currentBalance - val,
+              lastPaymentDate: serverTimestamp(),
+            });
+            alert("Settlement processed directly.");
+          }
+
+          closeShopModal();
+          document.getElementById("settle-amount").value = "";
+        }
       };
 
       window.closeShopModal = () =>
