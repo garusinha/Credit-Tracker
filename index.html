@@ -491,7 +491,7 @@
             snap.forEach((d) => {
               const data = d.data();
               allData.push({ id: d.id, ...data });
-              uniqueShops.add(data.shopName);
+              uniqueShops.add(data.shopName.trim().toUpperCase()); // Normalize here too
             });
 
             const suggestions = document.getElementById("shop-suggestions");
@@ -501,23 +501,29 @@
               o.value = s;
               suggestions.appendChild(o);
             });
-
+            // THE FIX: Grouping logic with strict normalization
             const grouped = allData.reduce((acc, bill) => {
-              if (!acc[bill.shopName])
-                acc[bill.shopName] = {
-                  name: bill.shopName,
+              // Always trim and uppercase for perfect matching
+              const normalizedName = bill.shopName.trim().toUpperCase();
+
+              if (!acc[normalizedName]) {
+                acc[normalizedName] = {
+                  name: normalizedName,
                   total: 0,
                   bills: [],
                 };
-              acc[bill.shopName].total += bill.balance;
-              acc[bill.shopName].bills.push(bill);
+              }
+
+              // Ensure balance is treated as a number and added to the total
+              acc[normalizedName].total += parseFloat(bill.balance || 0);
+              acc[normalizedName].bills.push(bill);
               return acc;
             }, {});
 
+            // Convert to array and filter for positive balances only
             currentActiveShops = Object.values(grouped).filter(
               (s) => s.total > 0.01,
             );
-
             filterShopList();
             updateDueReport();
           },
@@ -525,21 +531,33 @@
       }
 
       window.filterShopList = () => {
-        const term = document.getElementById("shop-search").value.toUpperCase();
+        const term = document
+          .getElementById("shop-search")
+          .value.toUpperCase()
+          .trim();
+
+        // Filter the already-summed shops
         const filtered = currentActiveShops.filter((s) =>
           s.name.includes(term),
         );
+
         let html = "";
         filtered.forEach((s) => {
+          // We use s.total which was calculated in loadData()
           html += `
-        <div onclick="openShopHistory('${s.name}')" class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-blue-600 flex justify-between items-center cursor-pointer">
-          <div>
-            <b class="text-blue-900 block uppercase">${s.name}</b>
-            <span class="text-[10px] text-slate-400 font-bold">${s.bills.filter((b) => b.balance > 0).length} PENDING BILLS</span>
-          </div>
-          <b class="text-blue-700">Rs. ${s.total.toLocaleString()}</b>
-        </div>`;
+    <div onclick="openShopHistory('${s.name}')" class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-blue-600 flex justify-between items-center cursor-pointer mb-2">
+      <div>
+        <b class="text-blue-900 block uppercase">${s.name}</b>
+        <span class="text-[10px] text-slate-400 font-bold">
+          ${s.bills.filter((b) => b.balance > 0).length} ACTIVE BILLS
+        </span>
+      </div>
+      <div class="text-right">
+        <b class="text-blue-700 block">Rs. ${s.total.toLocaleString()}</b>
+      </div>
+    </div>`;
         });
+
         document.getElementById("bill-list").innerHTML =
           html ||
           '<p class="text-center text-slate-400 py-10">No active debts found</p>';
@@ -671,20 +689,28 @@
       };
 
       window.openShopHistory = async (name) => {
+        // Normalize the incoming name to match the database records
+        const normalizedSearchName = name.trim().toUpperCase();
+
         const shopsBills = allData.filter(
-          (b) => b.shopName === name && b.balance > 0,
+          (b) =>
+            b.shopName.trim().toUpperCase() === normalizedSearchName &&
+            b.balance > 0,
         );
+
         let html = "";
         activeBillId = null;
         shopsBills.forEach((b) => {
+          // We set the activeBillId to the first unpaid bill found
           if (!activeBillId) activeBillId = b.id;
           html += `<div class="p-3 bg-slate-50 rounded-xl flex justify-between"><span>Bill ${b.billNo}</span><b>Rs. ${b.balance.toLocaleString()}</b></div>`;
         });
-        document.getElementById("modal-shop-title").innerText = name;
+
+        document.getElementById("modal-shop-title").innerText =
+          normalizedSearchName;
         document.getElementById("history-list").innerHTML = html;
-        document
-          .getElementById("shop-modal")
-          .classList.remove("hidden-section");
+
+        // UI logic for buttons
         const btn = document.querySelector(
           "#shop-modal button[onclick='confirmSettlement()']",
         );
@@ -704,28 +730,25 @@
         const val = parseFloat(document.getElementById("settle-amount").value);
         const shopName = document.getElementById("modal-shop-title").innerText;
 
-        if (!activeBillId || isNaN(val) || val <= 0) {
-          alert("Please enter a valid amount greater than 0.");
-          return;
-        }
+        if (!activeBillId || isNaN(val) || val <= 0) return;
 
-        // Find the specific bill to check its current balance
-        const billRef = doc(db, "bills", activeBillId);
-        const billSnap = await getDoc(billRef);
+        // 1. Get current bill data to check balance
+        const ref = doc(db, "bills", activeBillId);
+        const snap = await getDoc(ref);
 
-        if (billSnap.exists()) {
-          const currentBalance = billSnap.data().balance;
+        if (snap.exists()) {
+          const currentBalance = snap.data().balance;
 
-          // ERROR CHECK: If typed value is more than the credit
+          // 2. CHECK: Is the entered amount more than the credit?
           if (val > currentBalance) {
             alert(
-              `Error: You cannot collect more than the balance. \nMax allowed: Rs. ${currentBalance.toLocaleString()}`,
+              `Invalid Amount! \nThis bill only has Rs. ${currentBalance.toLocaleString()} remaining.`,
             );
-            return; // Stop the function here
+            return; // Stop execution
           }
 
           if (window.isReadOnly) {
-            // VIEWER MODE: Create a pending request
+            // VIEWER MODE
             await addDoc(collection(db, "pending_approvals"), {
               billId: activeBillId,
               shopName: shopName,
@@ -734,14 +757,14 @@
               requestedAt: serverTimestamp(),
               requestedBy: "Viewer",
             });
-            alert("Collection submitted! Waiting for Admin approval.");
+            alert("Collection submitted for approval!");
           } else {
-            // ADMIN MODE: Direct settlement
-            await updateDoc(billRef, {
+            // ADMIN MODE
+            await updateDoc(ref, {
               balance: currentBalance - val,
               lastPaymentDate: serverTimestamp(),
             });
-            alert("Settlement processed directly.");
+            alert("Settled successfully!");
           }
 
           closeShopModal();
