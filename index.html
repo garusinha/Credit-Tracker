@@ -514,8 +514,8 @@
               return acc;
             }, {});
 
-            currentActiveShops = Object.values(grouped).filter(
-              (s) => s.total > 0,
+            currentActiveShops = Object.values(grouped).filter((s) =>
+              s.bills.some((bill) => bill.balance !== 0),
             );
             filterShopList();
             updateDueReport();
