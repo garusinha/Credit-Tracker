@@ -69,9 +69,14 @@
         <button
           id="tab-collection-btn"
           onclick="showTab('collection')"
-          class="flex-1 py-4 font-bold active-tab text-[10px] uppercase"
+          class="flex-1 py-4 font-bold active-tab text-[10px] uppercase relative"
         >
           Collections
+          <span
+            id="admin-badge"
+            class="hidden absolute top-2 right-4 bg-red-600 text-white text-[8px] px-1.5 py-0.5 rounded-full border-2 border-white"
+            >0</span
+          >
         </button>
         <button
           id="tab-entry-btn"
@@ -98,6 +103,14 @@
           class="w-full p-4 glass-input rounded-2xl outline-none font-bold text-blue-900 shadow-sm"
         />
         <div id="bill-list" class="space-y-3 pb-6"></div>
+        <div id="viewer-pending-section" class="hidden-section mt-4 mb-6">
+          <h3
+            class="font-black text-[10px] uppercase text-orange-500 mb-2 tracking-widest"
+          >
+            ⏳ Your Pending Approvals
+          </h3>
+          <div id="viewer-pending-list" class="space-y-2"></div>
+        </div>
       </div>
 
       <div id="tab-entry" class="p-4 hidden-section">
@@ -315,6 +328,7 @@
           entryTabBtn.classList.add("hidden-section");
           window.isReadOnly = true;
           loadData();
+          loadViewerStatus();
         } else {
           alert("Access Denied");
         }
@@ -366,31 +380,74 @@
         showTab("collection");
       };
 
+      // CONSOLIDATED ADMIN APPROVAL FUNCTION
       async function loadPendingApprovals() {
         if (window.isReadOnly) return;
-        document
-          .getElementById("admin-approval-section")
-          .classList.remove("hidden-section");
+
+        const badge = document.getElementById("admin-badge");
+        const approvalSection = document.getElementById(
+          "admin-approval-section",
+        );
+        approvalSection.classList.remove("hidden-section");
+
+        onSnapshot(collection(db, "pending_approvals"), (snap) => {
+          // 1. Update Badge Count
+          const count = snap.size;
+          if (count > 0) {
+            badge.innerText = count;
+            badge.classList.remove("hidden");
+          } else {
+            badge.classList.add("hidden");
+          }
+
+          // 2. Render List for Admin
+          let html = "";
+          snap.forEach((d) => {
+            const data = d.data();
+            html += `
+        <div class="bg-orange-50 border border-orange-200 p-4 rounded-2xl flex justify-between items-center shadow-sm">
+          <div>
+            <b class="text-orange-900 block text-sm">${data.shopName}</b>
+            <span class="text-[10px] font-bold text-orange-700">Rs. ${data.amount.toLocaleString()}</span>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="rejectPayment('${d.id}')" class="bg-slate-400 text-white px-3 py-2 rounded-xl text-[10px] font-black">REJECT</button>
+            <button onclick="approvePayment('${d.id}', '${data.billId}', ${data.amount})" class="bg-green-600 text-white px-3 py-2 rounded-xl text-[10px] font-black">APPROVE</button>
+          </div>
+        </div>`;
+          });
+          document.getElementById("pending-list").innerHTML =
+            html ||
+            '<p class="text-xs text-slate-400">No pending approvals</p>';
+        });
+      }
+
+      // VIEWER STATUS FUNCTION
+      async function loadViewerStatus() {
+        const container = document.getElementById("viewer-pending-section");
+        const list = document.getElementById("viewer-pending-list");
+
+        if (container) container.classList.remove("hidden-section");
 
         onSnapshot(collection(db, "pending_approvals"), (snap) => {
           let html = "";
           snap.forEach((d) => {
             const data = d.data();
             html += `
-          <div class="bg-orange-50 border border-orange-200 p-4 rounded-2xl flex justify-between items-center shadow-sm">
-            <div>
-              <b class="text-orange-900 block text-sm">${data.shopName}</b>
-              <span class="text-[10px] font-bold text-orange-700">Rs. ${data.amount.toLocaleString()}</span>
-            </div>
-            <div class="flex gap-2">
-              <button onclick="rejectPayment('${d.id}')" class="bg-slate-400 text-white px-3 py-2 rounded-xl text-[10px] font-black">REJECT</button>
-              <button onclick="approvePayment('${d.id}', '${data.billId}', ${data.amount})" class="bg-green-600 text-white px-3 py-2 rounded-xl text-[10px] font-black">APPROVE</button>
-            </div>
-          </div>`;
+        <div class="bg-white border-l-4 border-orange-400 p-3 rounded-xl shadow-sm flex justify-between items-center">
+          <div>
+            <b class="text-slate-800 text-xs uppercase">${data.shopName}</b>
+            <div class="text-[10px] text-orange-600 font-bold">Rs. ${data.amount.toLocaleString()} (Pending)</div>
+          </div>
+          <div class="animate-pulse flex space-x-1">
+            <div class="h-2 w-2 bg-orange-400 rounded-full"></div>
+          </div>
+        </div>`;
           });
-          document.getElementById("pending-list").innerHTML =
-            html ||
-            '<p class="text-xs text-slate-400">No pending approvals</p>';
+          if (list)
+            list.innerHTML =
+              html ||
+              '<p class="text-[10px] text-slate-400 italic">No collections currently waiting for approval.</p>';
         });
       }
 
@@ -613,6 +670,19 @@
         });
         document.getElementById("modal-shop-title").innerText = name;
         document.getElementById("history-list").innerHTML = html;
+        document
+          .getElementById("shop-modal")
+          .classList.remove("hidden-section");
+        const btn = document.querySelector(
+          "#shop-modal button[onclick='confirmSettlement()']",
+        );
+        btn.innerText = window.isReadOnly
+          ? "REQUEST APPROVAL"
+          : "SETTLE & SAVE";
+        btn.className = window.isReadOnly
+          ? "w-full bg-orange-500 text-white py-4 rounded-xl font-bold"
+          : "w-full bg-green-600 text-white py-4 rounded-xl font-bold";
+
         document
           .getElementById("shop-modal")
           .classList.remove("hidden-section");
