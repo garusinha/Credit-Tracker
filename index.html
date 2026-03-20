@@ -1,6 +1,12 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <link rel="manifest" href="manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gamirasa Food - Pro Credit Tracker</title>
@@ -93,8 +99,16 @@
           Due Report
         </button>
       </div>
-
       <div id="tab-collection" class="p-4 space-y-4">
+        <div id="viewer-pending-section" class="hidden-section mb-6">
+          <h3
+            class="font-black text-[10px] uppercase text-orange-500 mb-2 tracking-widest"
+          >
+            ⏳ Your Pending Approvals
+          </h3>
+          <div id="viewer-pending-list" class="space-y-2"></div>
+        </div>
+
         <input
           id="shop-search"
           onkeyup="filterShopList()"
@@ -103,16 +117,7 @@
           class="w-full p-4 glass-input rounded-2xl outline-none font-bold text-blue-900 shadow-sm"
         />
         <div id="bill-list" class="space-y-3 pb-6"></div>
-        <div id="viewer-pending-section" class="hidden-section mt-4 mb-6">
-          <h3
-            class="font-black text-[10px] uppercase text-orange-500 mb-2 tracking-widest"
-          >
-            ⏳ Your Pending Approvals
-          </h3>
-          <div id="viewer-pending-list" class="space-y-2"></div>
-        </div>
       </div>
-
       <div id="tab-entry" class="p-4 hidden-section">
         <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
           <h3
@@ -275,6 +280,9 @@
       </div>
     </div>
     <script type="module">
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("sw.js");
+      }
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import {
         getFirestore,
@@ -380,7 +388,7 @@
         showTab("collection");
       };
 
-      // CONSOLIDATED ADMIN APPROVAL FUNCTION
+      // Function for Admin to see all requests and update the notification badge
       async function loadPendingApprovals() {
         if (window.isReadOnly) return;
 
@@ -391,8 +399,9 @@
         approvalSection.classList.remove("hidden-section");
 
         onSnapshot(collection(db, "pending_approvals"), (snap) => {
-          // 1. Update Badge Count
           const count = snap.size;
+
+          // Update Notification Badge for Admin
           if (count > 0) {
             badge.innerText = count;
             badge.classList.remove("hidden");
@@ -400,7 +409,6 @@
             badge.classList.add("hidden");
           }
 
-          // 2. Render List for Admin
           let html = "";
           snap.forEach((d) => {
             const data = d.data();
@@ -422,7 +430,7 @@
         });
       }
 
-      // VIEWER STATUS FUNCTION
+      // Function for Viewer to see their submitted requests at the top
       async function loadViewerStatus() {
         const container = document.getElementById("viewer-pending-section");
         const list = document.getElementById("viewer-pending-list");
@@ -434,20 +442,23 @@
           snap.forEach((d) => {
             const data = d.data();
             html += `
-        <div class="bg-white border-l-4 border-orange-400 p-3 rounded-xl shadow-sm flex justify-between items-center">
+        <div class="bg-white border-l-4 border-orange-400 p-3 rounded-xl shadow-sm flex justify-between items-center mb-2">
           <div>
             <b class="text-slate-800 text-xs uppercase">${data.shopName}</b>
-            <div class="text-[10px] text-orange-600 font-bold">Rs. ${data.amount.toLocaleString()} (Pending)</div>
+            <div class="text-[10px] text-orange-600 font-bold">Rs. ${data.amount.toLocaleString()} (Pending Approval)</div>
           </div>
           <div class="animate-pulse flex space-x-1">
             <div class="h-2 w-2 bg-orange-400 rounded-full"></div>
           </div>
         </div>`;
           });
-          if (list)
-            list.innerHTML =
-              html ||
-              '<p class="text-[10px] text-slate-400 italic">No collections currently waiting for approval.</p>';
+          if (list) list.innerHTML = html;
+          // Only show the container if there are items to show
+          if (snap.size > 0) {
+            container.classList.remove("hidden-section");
+          } else {
+            container.classList.add("hidden-section");
+          }
         });
       }
 
