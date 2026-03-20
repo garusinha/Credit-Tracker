@@ -52,7 +52,7 @@
         <input
           type="password"
           id="pin-input"
-          placeholder="PIN (2705)"
+          placeholder="Enter PIN to Access"
           class="w-full text-center text-3xl p-4 border-b-4 mb-6 outline-none"
         />
         <button
@@ -291,15 +291,31 @@
       document.getElementById("filter-date").valueAsDate = new Date();
 
       window.checkPin = () => {
-        if (document.getElementById("pin-input").value === "2705") {
-          document
-            .getElementById("login-screen")
-            .classList.add("hidden-section");
-          document
-            .getElementById("main-app")
-            .classList.remove("hidden-section");
+        const pin = document.getElementById("pin-input").value;
+        const loginScreen = document.getElementById("login-screen");
+        const mainApp = document.getElementById("main-app");
+        const entryTabBtn = document.getElementById("tab-entry-btn");
+
+        if (pin === "2705") {
+          // ADMIN MODE: Full access
+          loginScreen.classList.add("hidden-section");
+          mainApp.classList.remove("hidden-section");
           loadData();
-        } else alert("Denied");
+        } else if (pin === "1122") {
+          // VIEWER MODE: Hide Entry tab and Settle buttons
+          loginScreen.classList.add("hidden-section");
+          mainApp.classList.remove("hidden-section");
+
+          // Hide the "New Entry" tab button
+          entryTabBtn.classList.add("hidden-section");
+
+          // Set a global flag to disable settlement
+          window.isReadOnly = true;
+
+          loadData();
+        } else {
+          alert("Access Denied: Invalid PIN");
+        }
       };
 
       window.showTab = (tab) => {
@@ -396,12 +412,26 @@
           s.name.includes(term),
         );
         let html = "";
+
         filtered.forEach((s) => {
-          html += `<div onclick="openShopHistory('${s.name}')" class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-blue-600 flex justify-between items-center">
-            <div><b class="text-blue-900 block uppercase">${s.name}</b><span class="text-[10px] text-slate-400 font-bold">${s.bills.filter((b) => b.balance > 0).length} PENDING BILLS</span></div>
-            <b class="text-blue-700">Rs. ${s.total.toLocaleString()}</b>
-          </div>`;
+          // If read-only, we remove the 'onclick' so they can't open the settlement modal
+          const clickAttr = window.isReadOnly
+            ? ""
+            : `onclick="openShopHistory('${s.name}')"`;
+          const cursorClass = window.isReadOnly
+            ? "cursor-default"
+            : "cursor-pointer";
+
+          html += `
+      <div ${clickAttr} class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-blue-600 flex justify-between items-center ${cursorClass}">
+        <div>
+          <b class="text-blue-900 block uppercase">${s.name}</b>
+          <span class="text-[10px] text-slate-400 font-bold">${s.bills.filter((b) => b.balance > 0).length} PENDING BILLS</span>
+        </div>
+        <b class="text-blue-700">Rs. ${s.total.toLocaleString()}</b>
+      </div>`;
         });
+
         document.getElementById("bill-list").innerHTML =
           html ||
           '<p class="text-center text-slate-400 py-10">No active debts found</p>';
