@@ -467,12 +467,23 @@
         const billSnap = await getDoc(billRef);
 
         if (billSnap.exists()) {
+          const today = new Date().toISOString().split("T")[0];
+
+          // 1. Update main bill balance
           await updateDoc(billRef, {
             balance: billSnap.data().balance - amount,
             lastPaymentDate: serverTimestamp(),
           });
+
+          // 2. LOG THE INSTALLMENT DATE
+          await addDoc(collection(db, `bills/${billId}/payments`), {
+            amount: amount,
+            date: today,
+            timestamp: serverTimestamp(),
+          });
+
           await deleteDoc(doc(db, "pending_approvals", requestId));
-          alert("Approved!");
+          alert("Installment Approved & Logged!");
         }
       };
 
@@ -689,38 +700,65 @@
       };
 
       window.openShopHistory = async (name) => {
-        // Normalize the incoming name to match the database records
         const normalizedSearchName = name.trim().toUpperCase();
-
         const shopsBills = allData.filter(
           (b) =>
             b.shopName.trim().toUpperCase() === normalizedSearchName &&
-            b.balance > 0,
+            b.balance > 0.01,
         );
 
         let html = "";
         activeBillId = null;
-        shopsBills.forEach((b) => {
-          // We set the activeBillId to the first unpaid bill found
+
+        for (const b of shopsBills) {
           if (!activeBillId) activeBillId = b.id;
-          html += `<div class="p-3 bg-slate-50 rounded-xl flex justify-between"><span>Bill ${b.billNo}</span><b>Rs. ${b.balance.toLocaleString()}</b></div>`;
-        });
+
+          // Fetch installment history for this specific bill
+          const paySnap = await getDocs(
+            query(
+              collection(db, `bills/${b.id}/payments`),
+              orderBy("date", "desc"),
+            ),
+          );
+          let historyHtml = "";
+
+          paySnap.forEach((doc) => {
+            const p = doc.data();
+            historyHtml += `
+        <div class="flex justify-between text-[9px] text-slate-500 border-b border-slate-100 py-1">
+          <span>📅 ${p.date}</span>
+          <span class="font-bold text-green-600">+ Rs. ${p.amount.toLocaleString()}</span>
+        </div>`;
+          });
+
+          const paidAmount = b.amount - b.balance;
+
+          html += `
+    <div class="p-4 bg-white rounded-2xl border border-slate-200 mb-4 shadow-sm">
+      <div class="flex justify-between mb-2">
+        <b class="text-blue-900 text-xs">BILL: ${b.billNo}</b>
+        <span class="text-[10px] text-slate-400 italic">Issued: ${b.date}</span>
+      </div>
+      
+      <div class="flex justify-between text-[11px] mb-2">
+        <span>Total: Rs. ${b.amount.toLocaleString()}</span>
+        <span class="font-bold text-red-600">Due: Rs. ${b.balance.toLocaleString()}</span>
+      </div>
+
+      <div class="bg-slate-50 rounded-lg p-2 mb-2">
+        <p class="text-[8px] font-black text-slate-400 uppercase mb-1">Installment Dates</p>
+        ${historyHtml || '<p class="text-[9px] text-slate-400">No installments yet</p>'}
+      </div>
+
+      <div class="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+        <div class="bg-green-500 h-full" style="width: ${(paidAmount / b.amount) * 100}%"></div>
+      </div>
+    </div>`;
+        }
 
         document.getElementById("modal-shop-title").innerText =
           normalizedSearchName;
         document.getElementById("history-list").innerHTML = html;
-
-        // UI logic for buttons
-        const btn = document.querySelector(
-          "#shop-modal button[onclick='confirmSettlement()']",
-        );
-        btn.innerText = window.isReadOnly
-          ? "REQUEST APPROVAL"
-          : "SETTLE & SAVE";
-        btn.className = window.isReadOnly
-          ? "w-full bg-orange-500 text-white py-4 rounded-xl font-bold"
-          : "w-full bg-green-600 text-white py-4 rounded-xl font-bold";
-
         document
           .getElementById("shop-modal")
           .classList.remove("hidden-section");
@@ -730,40 +768,50 @@
         const val = parseFloat(document.getElementById("settle-amount").value);
         const shopName = document.getElementById("modal-shop-title").innerText;
 
-        if (!activeBillId || isNaN(val) || val <= 0) return;
+        if (!activeBillId || isNaN(val) || val <= 0) {
+          alert("Please enter a valid amount.");
+          return;
+        }
 
-        // 1. Get current bill data to check balance
         const ref = doc(db, "bills", activeBillId);
         const snap = await getDoc(ref);
 
         if (snap.exists()) {
           const currentBalance = snap.data().balance;
 
-          // 2. CHECK: Is the entered amount more than the credit?
           if (val > currentBalance) {
             alert(
-              `Invalid Amount! \nThis bill only has Rs. ${currentBalance.toLocaleString()} remaining.`,
+              `Payment exceeds balance!\nMax allowed: Rs. ${currentBalance.toLocaleString()}`,
             );
-            return; // Stop execution
+            return;
           }
 
           if (window.isReadOnly) {
-            // VIEWER MODE
             await addDoc(collection(db, "pending_approvals"), {
               billId: activeBillId,
               shopName: shopName,
               amount: val,
               status: "pending",
               requestedAt: serverTimestamp(),
-              requestedBy: "Viewer",
+              type: "installment", // Tracking that this is a partial payment
             });
-            alert("Collection submitted for approval!");
+            alert("Installment submitted for approval!");
           } else {
-            // ADMIN MODE
+            const today = new Date().toISOString().split("T")[0];
+
+            // Update Balance
             await updateDoc(ref, {
               balance: currentBalance - val,
               lastPaymentDate: serverTimestamp(),
             });
+
+            // Log Installment
+            await addDoc(collection(db, `bills/${activeBillId}/payments`), {
+              amount: val,
+              date: today,
+              timestamp: serverTimestamp(),
+            });
+
             alert("Settled successfully!");
           }
 
